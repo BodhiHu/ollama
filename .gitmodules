@@ -1,4 +1,5 @@
 [submodule "llama.cpp"]
 	path = llm/llama.cpp
-	url = https://github.com/ggerganov/llama.cpp.git
+	url = git@github.com:BodhiHu/llama.cpp.git
+	branch = ollama/phi3-vision
 	shallow = true
