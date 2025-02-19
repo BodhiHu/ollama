@@ -6,6 +6,8 @@ ARG ROCMVERSION=6.1.2
 ARG JETPACK5VERSION=r35.4.1
 ARG JETPACK6VERSION=r36.2.0
 ARG CMAKEVERSION=3.31.2
+ARG MUSA_VERSION_AMD64=rc3.1.1
+ARG MUSA_VERSION_ARM64=rc3.1.2
 
 FROM --platform=linux/amd64 rocm/dev-centos-7:${ROCMVERSION}-complete AS base-amd64
 RUN sed -i -e 's/mirror.centos.org/vault.centos.org/g' -e 's/^#.*baseurl=http/baseurl=http/g' -e 's/^mirrorlist=http/#mirrorlist=http/g' /etc/yum.repos.d/*.repo \
@@ -20,6 +22,18 @@ RUN yum install -y yum-utils epel-release \
     && yum install -y clang ccache \
     && yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/sbsa/cuda-rhel8.repo
 ENV CC=clang CXX=clang++
+
+FROM --platform=linux/amd64 mthreads/musa:${MUSA_VERSION_AMD64}-devel-ubuntu22.04 AS musa-builder-amd64
+RUN apt install -y ccache
+ENV CC=clang CXX=clang++
+WORKDIR /go/src/github.com/ollama/ollama/
+ENTRYPOINT [ "bash" ]
+
+FROM --platform=linux/arm64 mthreads/musa:${MUSA_VERSION_ARM64}-devel-ubuntu22.04 AS musa-builder-arm64
+RUN apt install -y ccache
+ENV CC=clang CXX=clang++
+WORKDIR /go/src/github.com/ollama/ollama/
+ENTRYPOINT [ "bash" ]
 
 FROM base-${TARGETARCH} AS base
 ARG CMAKEVERSION
@@ -54,6 +68,13 @@ RUN --mount=type=cache,target=/root/.ccache \
     cmake --preset 'CUDA 12' \
         && cmake --build --parallel --preset 'CUDA 12' \
         && cmake --install build --component CUDA --strip --parallel 8
+
+FROM musa-builder-${TARGETARCH} AS musa-build
+COPY . .
+RUN --mount=type=cache,target=/root/.ccache \
+    cmake --preset 'MUSA' \
+        && cmake --build --parallel --preset 'MUSA' \
+        && cmake --install build --component MUSA --strip --parallel 8
 
 FROM base AS rocm-6
 RUN --mount=type=cache,target=/root/.ccache \
@@ -97,6 +118,8 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 FROM --platform=linux/amd64 scratch AS amd64
 COPY --from=cuda-11 dist/lib/ollama/cuda_v11 /lib/ollama/cuda_v11
 COPY --from=cuda-12 dist/lib/ollama/cuda_v12 /lib/ollama/cuda_v12
+
+COPY --from=musa-build dist/lib/ollama/musa /lib/ollama/musa
 
 FROM --platform=linux/arm64 scratch AS arm64
 COPY --from=cuda-11 dist/lib/ollama/cuda_v11 /lib/ollama/cuda_v11

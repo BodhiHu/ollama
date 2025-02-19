@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"sort"
@@ -42,6 +43,14 @@ var NvcudaGlobs = []string{
 	"/usr/local/lib*/libcuda.so*",
 }
 
+var MusartGlobs = []string{
+	"/usr/local/musa*/lib*/libmusart.so*",
+}
+
+var MusaGlobs = []string{
+	"/usr/local/musa*/lib*/libmusa.so*",
+}
+
 var OneapiGlobs = []string{
 	"/usr/lib/x86_64-linux-gnu/libze_intel_gpu.so*",
 	"/usr/lib*/libze_intel_gpu.so*",
@@ -50,9 +59,21 @@ var OneapiGlobs = []string{
 var (
 	CudartMgmtName = "libcudart.so*"
 	NvcudaMgmtName = "libcuda.so*"
+	MusartMgmtName = "libmusart.so*"
+	MusaMgmtName   = "libmusa.so*"
 	NvmlMgmtName   = "" // not currently wired on linux
 	OneapiMgmtName = "libze_intel_gpu.so*"
 )
+
+func CheckVendors() {
+	matches, err := filepath.Glob("/usr/local/musa*/lib*/libmusa.so*")
+	if err == nil && len(matches) > 0 {
+		NvcudaGlobs = MusaGlobs
+		CudartGlobs = MusartGlobs
+		CudartMgmtName = MusartMgmtName
+		NvcudaMgmtName = MusaMgmtName
+	}
+}
 
 func GetCPUMem() (memInfo, error) {
 	var mem memInfo
