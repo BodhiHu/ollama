@@ -127,3 +127,27 @@ if(CMAKE_HIP_COMPILER)
         endforeach()
     endif()
 endif()
+
+if (NOT EXISTS $ENV{MUSA_PATH})
+    if (NOT EXISTS /opt/musa)
+        set(MUSA_PATH /usr/local/musa)
+    else()
+        set(MUSA_PATH /opt/musa)
+    endif()
+else()
+    set(MUSA_PATH $ENV{MUSA_PATH})
+endif()
+list(APPEND CMAKE_MODULE_PATH "${MUSA_PATH}/cmake")
+find_package(MUSAToolkit)
+if (MUSAToolkit_FOUND)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ml/backend/ggml/ggml/src/ggml-musa)
+    set(OLLAMA_MUSA_INSTALL_DIR ${OLLAMA_INSTALL_DIR}/musa_v${MUSAToolkit_VERSION_MAJOR})
+    install(TARGETS ggml-musa
+        RUNTIME_DEPENDENCIES
+            DIRECTORIES ${MUSAToolkit_BIN_DIR} ${MUSAToolkit_LIBRARY_DIR}
+            PRE_INCLUDE_REGEXES mublas musart
+            PRE_EXCLUDE_REGEXES ".*"
+        RUNTIME DESTINATION ${OLLAMA_MUSA_INSTALL_DIR} COMPONENT MUSA
+        LIBRARY DESTINATION ${OLLAMA_MUSA_INSTALL_DIR} COMPONENT MUSA
+    )
+endif()

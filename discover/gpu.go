@@ -79,6 +79,8 @@ const IGPUMemLimit = 1 * format.GibiByte // 512G is what they typically report, 
 func initCudaHandles() *cudaHandles {
 	// TODO - if the ollama build is CPU only, don't do these checks as they're irrelevant and confusing
 
+	CheckVendors()
+
 	cHandles := &cudaHandles{}
 	// Short Circuit if we already know which library to use
 	// ignore bootstrap errors in this case since we already recorded them
