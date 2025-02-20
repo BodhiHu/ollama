@@ -188,12 +188,12 @@ fi
 
 # Install GPU dependencies on Linux
 if ! available lspci && ! available lshw; then
-    warning "Unable to detect NVIDIA/AMD GPU. Install lspci or lshw to automatically detect and install GPU dependencies."
+    warning "Unable to detect NVIDIA/AMD/MThreads GPU. Install lspci or lshw to automatically detect and install GPU dependencies."
     exit 0
 fi
 
 check_gpu() {
-    # Look for devices based on vendor ID for NVIDIA and AMD
+    # Look for devices based on vendor ID for NVIDIA and AMD and MooreThreads
     case $1 in
         lspci)
             case $2 in
@@ -204,8 +204,10 @@ check_gpu() {
             case $2 in
                 nvidia) available lshw && $SUDO lshw -c display -numeric -disable network | grep -q 'vendor: .* \[10DE\]' || return 1 ;;
                 amdgpu) available lshw && $SUDO lshw -c display -numeric -disable network | grep -q 'vendor: .* \[1002\]' || return 1 ;;
+                mtgpu) available lshw && $SUDO lshw -c display -numeric -disable network | grep -q 'mtgpu' || return 1 ;;
             esac ;;
         nvidia-smi) available nvidia-smi || return 1 ;;
+        mthreads-gmi) available mthreads-gmi || return 1 ;;
     esac
 }
 
@@ -214,9 +216,9 @@ if check_gpu nvidia-smi; then
     exit 0
 fi
 
-if ! check_gpu lspci nvidia && ! check_gpu lshw nvidia && ! check_gpu lspci amdgpu && ! check_gpu lshw amdgpu; then
+if ! check_gpu lspci nvidia && ! check_gpu lshw nvidia && ! check_gpu lspci amdgpu && ! check_gpu lshw amdgpu && ! check_gpu lshw mtgpu; then
     install_success
-    warning "No NVIDIA/AMD GPU detected. Ollama will run in CPU-only mode."
+    warning "No NVIDIA/AMD/MThreads GPU detected. Ollama will run in CPU-only mode."
     exit 0
 fi
 
@@ -228,6 +230,17 @@ if check_gpu lspci amdgpu || check_gpu lshw amdgpu; then
 
     install_success
     status "AMD GPU ready."
+    exit 0
+fi
+
+if check_gpu lshw mtgpu; then
+    status "Downloading Linux MThreads MUSA ${ARCH} bundle"
+    curl --fail --show-error --location --progress-bar \
+        "https://ollama.com/download/ollama-linux-${ARCH}-musa.tgz${VER_PARAM}" | \
+        $SUDO tar -xzf - -C "$OLLAMA_INSTALL_DIR"
+
+    install_success
+    status "MThreads GPU ready."
     exit 0
 fi
 

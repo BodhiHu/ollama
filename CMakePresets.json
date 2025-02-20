@@ -14,6 +14,10 @@
       "inherits": [ "Default" ]
     },
     {
+      "name": "MUSA",
+      "inherits": [ "Default" ]
+    },
+    {
       "name": "CUDA",
       "inherits": [ "Default" ]
     },

@@ -295,6 +295,12 @@ jobs:
           - os: linux
             arch: arm64
             target: archive
+          - os: linux
+            arch: amd64
+            target: musa
+          - os: linux
+            arch: arm64
+            target: musa
     runs-on: ${{ matrix.arch == 'arm64' && format('{0}-{1}', matrix.os, matrix.arch) || matrix.os }}
     environment: release
     needs: setup-environment
@@ -324,6 +330,7 @@ jobs:
               lib/ollama/cuda_v12)      echo $COMPONENT >>ollama-${{ matrix.os }}-${{ matrix.arch }}.tar.in ;;
               lib/ollama/cuda_jetpack5) echo $COMPONENT >>ollama-${{ matrix.os }}-${{ matrix.arch }}-jetpack5.tar.in ;;
               lib/ollama/cuda_jetpack6) echo $COMPONENT >>ollama-${{ matrix.os }}-${{ matrix.arch }}-jetpack6.tar.in ;;
+              lib/ollama/musa)          echo $COMPONENT >>ollama-${{ matrix.os }}-${{ matrix.arch }}-musa.tar.in ;;
               lib/ollama/rocm)          echo $COMPONENT >>ollama-${{ matrix.os }}-${{ matrix.arch }}-rocm.tar.in ;;
             esac
           done
@@ -361,6 +368,22 @@ jobs:
               CGO_CXXFLAGS
               GOFLAGS
               FLAVOR=rocm
+          - os: linux
+            arch: amd64
+            suffix: '-musa'
+            build-args: |
+              CGO_CFLAGS
+              CGO_CXXFLAGS
+              GOFLAGS
+              FLAVOR=musa
+          - os: linux
+            arch: arm64
+            suffix: '-musa'
+            build-args: |
+              CGO_CFLAGS
+              CGO_CXXFLAGS
+              GOFLAGS
+              FLAVOR=musa
     runs-on: ${{ matrix.arch == 'arm64' && format('{0}-{1}', matrix.os, matrix.arch) || matrix.os }}
     environment: release
     needs: setup-environment
@@ -396,7 +419,7 @@ jobs:
   docker-merge-push:
     strategy:
       matrix:
-        suffix: ['', '-rocm']
+        suffix: ['', '-rocm', '-musa']
     runs-on: linux
     environment: release
     needs: [docker-build-push]
