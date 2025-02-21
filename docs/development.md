@@ -111,6 +111,12 @@ docker build .
 docker build --build-arg FLAVOR=rocm .
 ```
 
+### MUSA
+
+```shell
+docker build --build-arg FLAVOR=musa .
+```
+
 ## Running tests
 
 To run tests, use `go test`:

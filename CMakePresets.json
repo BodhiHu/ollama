@@ -76,6 +76,11 @@
       "targets": [ "ggml-cpu" ]
     },
     {
+      "name": "MUSA",
+      "configurePreset": "MUSA",
+      "targets": [ "ggml-musa" ]
+    },
+    {
       "name": "CUDA",
       "configurePreset": "CUDA",
       "targets": [ "ggml-cuda" ]
