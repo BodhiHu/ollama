@@ -21,13 +21,14 @@ FROM --platform=linux/arm64 rockylinux:8 AS base-arm64
 RUN yum install -y yum-utils epel-release \
     && yum install -y clang ccache \
     && yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/sbsa/cuda-rhel8.repo
+RUN yum update -y openssl curl ca-certificates
 ENV CC=clang CXX=clang++
 
 FROM --platform=linux/amd64 mthreads/musa:${MUSA_VERSION_AMD64}-devel-ubuntu22.04 AS base-musa-amd64
 ENV CC=clang CXX=clang++
 # RUN bash /musa/install_deps.sh
 # RUN bash /musa/install_musa.sh
-WORKDIR /go/src/github.com/ollama/ollama/
+WORKDIR /ollama
 COPY . .
 ENTRYPOINT [ "bash" ]
 
@@ -36,7 +37,7 @@ FROM --platform=linux/arm64 docker.io/library/musa:rc3.1.2-devel-ubuntu22.04-arm
 ENV CC=clang CXX=clang++
 # RUN bash /musa/install_deps.sh
 # RUN bash /musa/install_musa.sh
-WORKDIR /go/src/github.com/ollama/ollama/
+WORKDIR /ollama
 COPY . .
 ENTRYPOINT [ "bash" ]
 
@@ -110,7 +111,7 @@ RUN --mount=type=cache,target=/root/.ccache \
 
 FROM base AS build
 ARG GOVERSION=1.23.4
-RUN curl -fsSL https://golang.org/dl/go${GOVERSION}.linux-$(case $(uname -m) in x86_64) echo amd64 ;; aarch64) echo arm64 ;; esac).tar.gz | tar xz -C /usr/local
+RUN curl -fsSL -vvv https://golang.org/dl/go${GOVERSION}.linux-$(case $(uname -m) in x86_64) echo amd64 ;; aarch64) echo arm64 ;; esac).tar.gz | tar xz -C /usr/local
 ENV PATH=/usr/local/go/bin:$PATH
 WORKDIR /go/src/github.com/ollama/ollama
 COPY . .
@@ -130,7 +131,7 @@ COPY --from=jetpack-5 dist/lib/ollama/cuda_v11 lib/ollama/cuda_jetpack5
 COPY --from=jetpack-6 dist/lib/ollama/cuda_v12 lib/ollama/cuda_jetpack6
 
 FROM --platform=linux/${TARGETARCH} scratch AS musa
-COPY --from=musa-3 dist/lib/ollama/musa /lib/ollama/musa
+COPY --from=musa-3 /ollama/dist/lib/ollama/musa_v* /lib/ollama/
 
 FROM --platform=linux/arm64 scratch AS rocm
 COPY --from=rocm-6 dist/lib/ollama/rocm /lib/ollama/rocm
@@ -150,6 +151,10 @@ COPY --from=archive /lib/ollama /usr/lib/ollama
 ENV LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 ENV NVIDIA_VISIBLE_DEVICES=all
+ENV MTHREADS_VISIBLE_DEVICES=all
+ENV MUSA_HOME=/usr/local/musa
+ENV LD_LIBRARY_PATH=${MUSA_HOME}/lib:${LD_LIBRARY_PATH}
+ENV PATH=${MUSA_HOME}/bin:${PATH}
 ENV OLLAMA_HOST=0.0.0.0:11434
 EXPOSE 11434
 ENTRYPOINT ["/bin/ollama"]
