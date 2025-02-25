@@ -6,6 +6,8 @@ ARG ROCMVERSION=6.1.2
 ARG JETPACK5VERSION=r35.4.1
 ARG JETPACK6VERSION=r36.2.0
 ARG CMAKEVERSION=3.31.2
+ARG MUSA_VERSION_AMD64=rc3.1.1
+ARG MUSA_VERSION_ARM64=rc3.1.2
 
 FROM --platform=linux/amd64 rocm/dev-centos-7:${ROCMVERSION}-complete AS base-amd64
 RUN sed -i -e 's/mirror.centos.org/vault.centos.org/g' -e 's/^#.*baseurl=http/baseurl=http/g' -e 's/^mirrorlist=http/#mirrorlist=http/g' /etc/yum.repos.d/*.repo \
@@ -19,7 +21,28 @@ FROM --platform=linux/arm64 rockylinux:8 AS base-arm64
 RUN yum install -y yum-utils epel-release \
     && yum install -y clang ccache \
     && yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/sbsa/cuda-rhel8.repo
+RUN yum update -y openssl curl ca-certificates
 ENV CC=clang CXX=clang++
+
+FROM --platform=linux/amd64 mthreads/musa:${MUSA_VERSION_AMD64}-devel-ubuntu22.04 AS base-musa-amd64
+ENV CC=clang CXX=clang++
+# TODO: @BodhiHu: uncomment below
+# RUN bash /musa/install_deps.sh
+# RUN bash /musa/install_musa.sh
+WORKDIR /ollama
+COPY . .
+ENTRYPOINT [ "bash" ]
+
+# TODO: @BodhiHu: update to final docker image
+# FROM --platform=linux/arm64 mthreads/musa:${MUSA_VERSION_ARM64}-devel-ubuntu22.04-arm64 AS base-musa-arm64
+FROM --platform=linux/arm64 docker.io/library/musa:rc3.1.2-devel-ubuntu22.04-arm64 AS base-musa-arm64
+ENV CC=clang CXX=clang++
+# TODO: @BodhiHu: uncomment below
+# RUN bash /musa/install_deps.sh
+# RUN bash /musa/install_musa.sh
+WORKDIR /ollama
+COPY . .
+ENTRYPOINT [ "bash" ]
 
 FROM base-${TARGETARCH} AS base
 ARG CMAKEVERSION
@@ -55,6 +78,12 @@ RUN --mount=type=cache,target=/root/.ccache \
         && cmake --build --parallel --preset 'CUDA 12' \
         && cmake --install build --component CUDA --strip --parallel 8
 
+FROM base-musa-${TARGETARCH} AS musa-3
+RUN --mount=type=cache,target=/root/.ccache \
+    cmake --preset 'MUSA' \
+        && cmake --build --parallel --preset 'MUSA' \
+        && cmake --install build --component MUSA --strip --parallel 8
+
 FROM base AS rocm-6
 RUN --mount=type=cache,target=/root/.ccache \
     cmake --preset 'ROCm 6' \
@@ -85,7 +114,9 @@ RUN --mount=type=cache,target=/root/.ccache \
 
 FROM base AS build
 ARG GOVERSION=1.23.4
-RUN curl -fsSL https://golang.org/dl/go${GOVERSION}.linux-$(case $(uname -m) in x86_64) echo amd64 ;; aarch64) echo arm64 ;; esac).tar.gz | tar xz -C /usr/local
+# TODO: @BodhiHu: remove the mirrored download link
+# RUN curl -fsSL https://golang.org/dl/go${GOVERSION}.linux-$(case $(uname -m) in x86_64) echo amd64 ;; aarch64) echo arm64 ;; esac).tar.gz | tar xz -C /usr/local
+RUN curl -fsSL https://oss.mthreads.com/release-stable/mirrors/go1.23.4.linux-arm64.tar.gz | tar xz -C /usr/local
 ENV PATH=/usr/local/go/bin:$PATH
 WORKDIR /go/src/github.com/ollama/ollama
 COPY . .
@@ -104,6 +135,14 @@ COPY --from=cuda-12 dist/lib/ollama/cuda_v12 /lib/ollama/cuda_v12
 COPY --from=jetpack-5 dist/lib/ollama/cuda_v11 lib/ollama/cuda_jetpack5
 COPY --from=jetpack-6 dist/lib/ollama/cuda_v12 lib/ollama/cuda_jetpack6
 
+FROM --platform=linux/${TARGETARCH} scratch AS musa
+COPY --from=musa-3 \
+    /ollama/dist/lib/ollama/musa_v3/libggml-musa.so \
+    /usr/local/musa/lib/libmusa.so \
+    /usr/local/musa/lib/libmublas.so \
+    /usr/local/musa/lib/libmusart.so \
+    /lib/ollama/musa_v3/
+
 FROM --platform=linux/arm64 scratch AS rocm
 COPY --from=rocm-6 dist/lib/ollama/rocm /lib/ollama/rocm
 
@@ -113,15 +152,17 @@ COPY --from=build /bin/ollama /bin/ollama
 
 FROM ubuntu:20.04
 RUN apt-get update \
-    && apt-get install -y ca-certificates \
+    && apt-get install -y ca-certificates libelf1 libnuma-dev libomp-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+RUN ln -s /lib/$(uname -m)-linux-gnu/libomp.so.5 /lib/$(uname -m)-linux-gnu/libomp.so
 COPY --from=archive /bin /usr/bin
 ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 COPY --from=archive /lib/ollama /usr/lib/ollama
-ENV LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64
+ENV LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/aarch64-linux-gnu/musa
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 ENV NVIDIA_VISIBLE_DEVICES=all
+ENV MTHREADS_VISIBLE_DEVICES=all
 ENV OLLAMA_HOST=0.0.0.0:11434
 EXPOSE 11434
 ENTRYPOINT ["/bin/ollama"]

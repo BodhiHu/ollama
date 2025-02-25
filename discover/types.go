@@ -78,6 +78,15 @@ type CudaGPUInfo struct {
 }
 type CudaGPUInfoList []CudaGPUInfo
 
+type MusaGPUInfo struct {
+	GpuInfo
+	OSOverhead   uint64 // Memory overhead between the driver library and management library
+	index        int    //nolint:unused,nolintlint
+	computeMajor int    //nolint:unused,nolintlint
+	computeMinor int    //nolint:unused,nolintlint
+}
+type MusaGPUInfoList []MusaGPUInfo
+
 type RocmGPUInfo struct {
 	GpuInfo
 	usedFilepath string //nolint:unused,nolintlint
@@ -173,6 +182,7 @@ func (l GpuInfoList) FlashAttentionSupported() bool {
 	for _, gpu := range l {
 		supportsFA := gpu.Library == "metal" ||
 			(gpu.Library == "cuda" && gpu.DriverMajor >= 7) ||
+			gpu.Library == "musa" ||
 			gpu.Library == "rocm"
 
 		if !supportsFA {

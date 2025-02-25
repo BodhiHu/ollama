@@ -39,6 +39,7 @@ type oneapiHandles struct {
 
 const (
 	cudaMinimumMemory = 457 * format.MebiByte
+	musaMinimumMemory = 457 * format.MebiByte
 	rocmMinimumMemory = 457 * format.MebiByte
 	// TODO OneAPI minimum memory
 )
@@ -50,6 +51,9 @@ var (
 	cudaGPUs      []CudaGPUInfo
 	nvcudaLibPath string
 	cudartLibPath string
+	musaGPUs      []MusaGPUInfo
+	musaLibPath   string
+	musartLibPath string
 	oneapiLibPath string
 	nvmlLibPath   string
 	rocmGPUs      []RocmGPUInfo
@@ -69,6 +73,8 @@ var (
 	CudaComputeMajorMin = "5"
 	CudaComputeMinorMin = "0"
 )
+
+var MusaComputeMajorMin = "3"
 
 var RocmComputeMajorMin = "9"
 
@@ -192,6 +198,7 @@ func GetGPUInfo() GpuInfoList {
 	defer gpuMutex.Unlock()
 	needRefresh := true
 	var cHandles *cudaHandles
+	var mHandles *musaHandles
 	var oHandles *oneapiHandles
 	defer func() {
 		if cHandles != nil {
@@ -203,6 +210,14 @@ func GetGPUInfo() GpuInfoList {
 			}
 			if cHandles.nvml != nil {
 				C.nvml_release(*cHandles.nvml)
+			}
+		}
+		if mHandles != nil {
+			if mHandles.musart != nil {
+				C.musart_release(*mHandles.musart)
+			}
+			if mHandles.musa != nil {
+				C.musa_release(*mHandles.musa)
 			}
 		}
 		if oHandles != nil {
@@ -333,6 +348,12 @@ func GetGPUInfo() GpuInfoList {
 			}
 		}
 
+		mHandles = initMusaHandles()
+		musaGPUs, err = MUSAGetGPUInfo()
+		if err != nil {
+			bootstrapErrors = append(bootstrapErrors, err)
+		}
+
 		// Intel
 		if envconfig.IntelGPU() {
 			oHandles = initOneAPIHandles()
@@ -373,7 +394,7 @@ func GetGPUInfo() GpuInfoList {
 			bootstrapErrors = append(bootstrapErrors, err)
 		}
 		bootstrapped = true
-		if len(cudaGPUs) == 0 && len(rocmGPUs) == 0 && len(oneapiGPUs) == 0 {
+		if len(cudaGPUs) == 0 && len(musaGPUs) == 0 && len(rocmGPUs) == 0 && len(oneapiGPUs) == 0 {
 			slog.Info("no compatible GPUs were discovered")
 		}
 
@@ -457,6 +478,11 @@ func GetGPUInfo() GpuInfoList {
 			cudaGPUs[i].FreeMemory = uint64(memInfo.free)
 		}
 
+		if mHandles == nil && len(musaGPUs) > 0 {
+			mHandles = initMusaHandles()
+		}
+		MUSARefreshFreeMemory(mHandles, musaGPUs)
+
 		if oHandles == nil && len(oneapiGPUs) > 0 {
 			oHandles = initOneAPIHandles()
 		}
@@ -481,6 +507,9 @@ func GetGPUInfo() GpuInfoList {
 
 	resp := []GpuInfo{}
 	for _, gpu := range cudaGPUs {
+		resp = append(resp, gpu.GpuInfo)
+	}
+	for _, gpu := range musaGPUs {
 		resp = append(resp, gpu.GpuInfo)
 	}
 	for _, gpu := range rocmGPUs {
@@ -687,6 +716,8 @@ func (l GpuInfoList) GetVisibleDevicesEnv() (string, string) {
 	switch l[0].Library {
 	case "cuda":
 		return cudaGetVisibleDevicesEnv(l)
+	case "musa":
+		return musaGetVisibleDevicesEnv(l)
 	case "rocm":
 		return rocmGetVisibleDevicesEnv(l)
 	case "oneapi":
