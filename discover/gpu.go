@@ -297,13 +297,15 @@ func GetGPUInfo() GpuInfoList {
 				gpuInfo.Name = C.GoString(&memInfo.gpu_name[0])
 				gpuInfo.Variant = variant
 
-				if int(memInfo.major) < cudaComputeMajorMin || (int(memInfo.major) == cudaComputeMajorMin && int(memInfo.minor) < cudaComputeMinorMin) {
-					unsupportedGPUs = append(unsupportedGPUs,
-						UnsupportedGPUInfo{
-							GpuInfo: gpuInfo.GpuInfo,
-						})
-					slog.Info(fmt.Sprintf("[%d] CUDA GPU is too old. Compute Capability detected: %d.%d", i, memInfo.major, memInfo.minor))
-					continue
+				if strings.ToLower(gpuInfo.Name)[0] != 'm' {
+					if int(memInfo.major) < cudaComputeMajorMin || (int(memInfo.major) == cudaComputeMajorMin && int(memInfo.minor) < cudaComputeMinorMin) {
+						unsupportedGPUs = append(unsupportedGPUs,
+							UnsupportedGPUInfo{
+								GpuInfo: gpuInfo.GpuInfo,
+							})
+						slog.Info(fmt.Sprintf("[%d] CUDA GPU is too old. Compute Capability detected: %d.%d", i, memInfo.major, memInfo.minor))
+						continue
+					}
 				}
 
 				// query the management library as well so we can record any skew between the two

@@ -45,10 +45,12 @@ var NvcudaGlobs = []string{
 
 var MusartGlobs = []string{
 	"/usr/local/musa*/lib*/libmusart.so*",
+	"/lib/ollama/musa*/libmusart.so*",
 }
 
 var MusaGlobs = []string{
 	"/usr/local/musa*/lib*/libmusa.so*",
+	"/lib/ollama/musa*/libmusa.so*",
 }
 
 var OneapiGlobs = []string{
@@ -66,12 +68,19 @@ var (
 )
 
 func CheckVendors() {
-	matches, err := filepath.Glob("/usr/local/musa*/lib*/libmusa.so*")
-	if err == nil && len(matches) > 0 {
-		NvcudaGlobs = MusaGlobs
-		CudartGlobs = MusartGlobs
-		CudartMgmtName = MusartMgmtName
-		NvcudaMgmtName = MusaMgmtName
+	musaGlobs := []string{
+		"/usr/local/musa*/lib*/libmusa.so*",
+		"/lib/ollama/musa*/libmusa.so*",
+	}
+	for _, pattern := range musaGlobs {
+		matches, err := filepath.Glob(pattern)
+		if err == nil && len(matches) > 0 {
+			NvcudaGlobs = MusaGlobs
+			CudartGlobs = MusartGlobs
+			CudartMgmtName = MusartMgmtName
+			NvcudaMgmtName = MusaMgmtName
+			break
+		}
 	}
 }
 

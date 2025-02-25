@@ -8,6 +8,7 @@ const char* to_vendor_sym(const char *input) {
   glob_t result;
   if (strcmp(vendor_name, "musa") == 0
     || glob("/usr/local/musa*/lib*/libmusa.so*", GLOB_TILDE, NULL, &result) == 0
+    || glob("/lib/ollama/musa*/libmusa.so*", GLOB_TILDE, NULL, &result) == 0
   ) {
     vendor_name = "musa";
 

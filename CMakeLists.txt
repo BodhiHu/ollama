@@ -141,7 +141,7 @@ list(APPEND CMAKE_MODULE_PATH "${MUSA_PATH}/cmake")
 find_package(MUSAToolkit)
 if (MUSAToolkit_FOUND)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ml/backend/ggml/ggml/src/ggml-musa)
-    set(OLLAMA_MUSA_INSTALL_DIR ${OLLAMA_INSTALL_DIR}/musa_v${MUSAToolkit_VERSION_MAJOR})
+    set(OLLAMA_MUSA_INSTALL_DIR ${OLLAMA_INSTALL_DIR}/musa_v3)
     message(STATUS "OLLAMA_MUSA_INSTALL_DIR: ${OLLAMA_MUSA_INSTALL_DIR}")
     install(TARGETS ggml-musa
         RUNTIME_DEPENDENCIES
