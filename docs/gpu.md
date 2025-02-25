@@ -45,6 +45,11 @@ your NVIDIA GPU, and fallback to running on the CPU.  You can workaround this
 driver bug by reloading the NVIDIA UVM driver with `sudo rmmod nvidia_uvm &&
 sudo modprobe nvidia_uvm`
 
+## MooreThreads MUSA
+
+### GPU Selection
+You can set `MUSA_VISIBLE_DEVICES` to specify which GPUs to use.
+
 ## AMD Radeon
 Ollama supports the following AMD GPUs:
 

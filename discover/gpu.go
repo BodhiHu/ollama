@@ -39,6 +39,7 @@ type oneapiHandles struct {
 
 const (
 	cudaMinimumMemory = 457 * format.MebiByte
+	musaMinimumMemory = 457 * format.MebiByte
 	rocmMinimumMemory = 457 * format.MebiByte
 	// TODO OneAPI minimum memory
 )
@@ -50,6 +51,9 @@ var (
 	cudaGPUs      []CudaGPUInfo
 	nvcudaLibPath string
 	cudartLibPath string
+	musaGPUs      []MusaGPUInfo
+	musaLibPath   string
+	musartLibPath string
 	oneapiLibPath string
 	nvmlLibPath   string
 	rocmGPUs      []RocmGPUInfo
@@ -70,6 +74,8 @@ var (
 	CudaComputeMinorMin = "0"
 )
 
+var MusaComputeMajorMin = "3"
+
 var RocmComputeMajorMin = "9"
 
 // TODO find a better way to detect iGPU instead of minimum memory
@@ -78,8 +84,6 @@ const IGPUMemLimit = 1 * format.GibiByte // 512G is what they typically report, 
 // Note: gpuMutex must already be held
 func initCudaHandles() *cudaHandles {
 	// TODO - if the ollama build is CPU only, don't do these checks as they're irrelevant and confusing
-
-	CheckVendors()
 
 	cHandles := &cudaHandles{}
 	// Short Circuit if we already know which library to use
@@ -194,6 +198,7 @@ func GetGPUInfo() GpuInfoList {
 	defer gpuMutex.Unlock()
 	needRefresh := true
 	var cHandles *cudaHandles
+	var mHandles *musaHandles
 	var oHandles *oneapiHandles
 	defer func() {
 		if cHandles != nil {
@@ -205,6 +210,14 @@ func GetGPUInfo() GpuInfoList {
 			}
 			if cHandles.nvml != nil {
 				C.nvml_release(*cHandles.nvml)
+			}
+		}
+		if mHandles != nil {
+			if mHandles.musart != nil {
+				C.musart_release(*mHandles.musart)
+			}
+			if mHandles.musa != nil {
+				C.musa_release(*mHandles.musa)
 			}
 		}
 		if oHandles != nil {
@@ -297,15 +310,13 @@ func GetGPUInfo() GpuInfoList {
 				gpuInfo.Name = C.GoString(&memInfo.gpu_name[0])
 				gpuInfo.Variant = variant
 
-				if strings.ToLower(gpuInfo.Name)[0] != 'm' {
-					if int(memInfo.major) < cudaComputeMajorMin || (int(memInfo.major) == cudaComputeMajorMin && int(memInfo.minor) < cudaComputeMinorMin) {
-						unsupportedGPUs = append(unsupportedGPUs,
-							UnsupportedGPUInfo{
-								GpuInfo: gpuInfo.GpuInfo,
-							})
-						slog.Info(fmt.Sprintf("[%d] CUDA GPU is too old. Compute Capability detected: %d.%d", i, memInfo.major, memInfo.minor))
-						continue
-					}
+				if int(memInfo.major) < cudaComputeMajorMin || (int(memInfo.major) == cudaComputeMajorMin && int(memInfo.minor) < cudaComputeMinorMin) {
+					unsupportedGPUs = append(unsupportedGPUs,
+						UnsupportedGPUInfo{
+							GpuInfo: gpuInfo.GpuInfo,
+						})
+					slog.Info(fmt.Sprintf("[%d] CUDA GPU is too old. Compute Capability detected: %d.%d", i, memInfo.major, memInfo.minor))
+					continue
 				}
 
 				// query the management library as well so we can record any skew between the two
@@ -335,6 +346,12 @@ func GetGPUInfo() GpuInfoList {
 				// TODO potentially sort on our own algorithm instead of what the underlying GPU library does...
 				cudaGPUs = append(cudaGPUs, gpuInfo)
 			}
+		}
+
+		mHandles = initMusaHandles()
+		musaGPUs, err = MUSAGetGPUInfo()
+		if err != nil {
+			bootstrapErrors = append(bootstrapErrors, err)
 		}
 
 		// Intel
@@ -377,7 +394,7 @@ func GetGPUInfo() GpuInfoList {
 			bootstrapErrors = append(bootstrapErrors, err)
 		}
 		bootstrapped = true
-		if len(cudaGPUs) == 0 && len(rocmGPUs) == 0 && len(oneapiGPUs) == 0 {
+		if len(cudaGPUs) == 0 && len(musaGPUs) == 0 && len(rocmGPUs) == 0 && len(oneapiGPUs) == 0 {
 			slog.Info("no compatible GPUs were discovered")
 		}
 
@@ -461,6 +478,11 @@ func GetGPUInfo() GpuInfoList {
 			cudaGPUs[i].FreeMemory = uint64(memInfo.free)
 		}
 
+		if mHandles == nil && len(musaGPUs) > 0 {
+			mHandles = initMusaHandles()
+		}
+		MUSARefreshFreeMemory(mHandles, musaGPUs)
+
 		if oHandles == nil && len(oneapiGPUs) > 0 {
 			oHandles = initOneAPIHandles()
 		}
@@ -485,6 +507,9 @@ func GetGPUInfo() GpuInfoList {
 
 	resp := []GpuInfo{}
 	for _, gpu := range cudaGPUs {
+		resp = append(resp, gpu.GpuInfo)
+	}
+	for _, gpu := range musaGPUs {
 		resp = append(resp, gpu.GpuInfo)
 	}
 	for _, gpu := range rocmGPUs {
@@ -691,6 +716,8 @@ func (l GpuInfoList) GetVisibleDevicesEnv() (string, string) {
 	switch l[0].Library {
 	case "cuda":
 		return cudaGetVisibleDevicesEnv(l)
+	case "musa":
+		return musaGetVisibleDevicesEnv(l)
 	case "rocm":
 		return rocmGetVisibleDevicesEnv(l)
 	case "oneapi":

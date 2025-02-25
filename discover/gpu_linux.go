@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"reflect"
 	"regexp"
 	"sort"
@@ -66,23 +65,6 @@ var (
 	NvmlMgmtName   = "" // not currently wired on linux
 	OneapiMgmtName = "libze_intel_gpu.so*"
 )
-
-func CheckVendors() {
-	musaGlobs := []string{
-		"/usr/local/musa*/lib*/libmusa.so*",
-		"/lib/ollama/musa*/libmusa.so*",
-	}
-	for _, pattern := range musaGlobs {
-		matches, err := filepath.Glob(pattern)
-		if err == nil && len(matches) > 0 {
-			NvcudaGlobs = MusaGlobs
-			CudartGlobs = MusartGlobs
-			CudartMgmtName = MusartMgmtName
-			NvcudaMgmtName = MusaMgmtName
-			break
-		}
-	}
-}
 
 func GetCPUMem() (memInfo, error) {
 	var mem memInfo

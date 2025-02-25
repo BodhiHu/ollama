@@ -179,6 +179,7 @@ var (
 	LLMLibrary = String("OLLAMA_LLM_LIBRARY")
 
 	CudaVisibleDevices    = String("CUDA_VISIBLE_DEVICES")
+	MusaVisibleDevices    = String("MUSA_VISIBLE_DEVICES")
 	HipVisibleDevices     = String("HIP_VISIBLE_DEVICES")
 	RocrVisibleDevices    = String("ROCR_VISIBLE_DEVICES")
 	GpuDeviceOrdinal      = String("GPU_DEVICE_ORDINAL")
@@ -269,6 +270,7 @@ func AsMap() map[string]EnvVar {
 
 	if runtime.GOOS != "darwin" {
 		ret["CUDA_VISIBLE_DEVICES"] = EnvVar{"CUDA_VISIBLE_DEVICES", CudaVisibleDevices(), "Set which NVIDIA devices are visible"}
+		ret["MUSA_VISIBLE_DEVICES"] = EnvVar{"MUSA_VISIBLE_DEVICES", MusaVisibleDevices(), "Set which MooreThreads devices are visible"}
 		ret["HIP_VISIBLE_DEVICES"] = EnvVar{"HIP_VISIBLE_DEVICES", HipVisibleDevices(), "Set which AMD devices are visible by numeric ID"}
 		ret["ROCR_VISIBLE_DEVICES"] = EnvVar{"ROCR_VISIBLE_DEVICES", RocrVisibleDevices(), "Set which AMD devices are visible by UUID or numeric ID"}
 		ret["GPU_DEVICE_ORDINAL"] = EnvVar{"GPU_DEVICE_ORDINAL", GpuDeviceOrdinal(), "Set which AMD devices are visible by numeric ID"}

@@ -78,6 +78,11 @@ type CudaGPUInfo struct {
 }
 type CudaGPUInfoList []CudaGPUInfo
 
+type MusaGPUInfo struct {
+	CudaGPUInfo
+}
+type MusaGPUInfoList []MusaGPUInfo
+
 type RocmGPUInfo struct {
 	GpuInfo
 	usedFilepath string //nolint:unused,nolintlint
@@ -173,6 +178,7 @@ func (l GpuInfoList) FlashAttentionSupported() bool {
 	for _, gpu := range l {
 		supportsFA := gpu.Library == "metal" ||
 			(gpu.Library == "cuda" && gpu.DriverMajor >= 7) ||
+			gpu.Library == "musa" ||
 			gpu.Library == "rocm"
 
 		if !supportsFA {
