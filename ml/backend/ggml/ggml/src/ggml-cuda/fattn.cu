@@ -9,6 +9,47 @@
 
 #include <cstdint>
 
+// FIXME: ggml_cuda_flash_attn_ext_wmma_f16_case c++ templates symbols are somehow undefined
+// in the built libggml-musa.so, for now we move the template instantiations to fattn.cu to
+// resolve this. This had changed in the upstream llama.cpp, we can remove this `GGML_USE_MUSA`
+// check once ollama synced with upstream.
+#ifdef GGML_USE_MUSA
+#define INST_FATTN_WMMA_F16_CASE(D, cols_per_block, KQ_acc_t)                         \
+    template void ggml_cuda_flash_attn_ext_wmma_f16_case                              \
+    <D, cols_per_block, KQ_acc_t>(ggml_backend_cuda_context & ctx, ggml_tensor * dst) \
+
+INST_FATTN_WMMA_F16_CASE( 64, 16, float);
+INST_FATTN_WMMA_F16_CASE( 80, 16, float);
+INST_FATTN_WMMA_F16_CASE( 96, 16, float);
+INST_FATTN_WMMA_F16_CASE(112, 16, float);
+INST_FATTN_WMMA_F16_CASE(128, 16, float);
+INST_FATTN_WMMA_F16_CASE(256, 16, float);
+
+INST_FATTN_WMMA_F16_CASE( 64, 32, float);
+INST_FATTN_WMMA_F16_CASE( 80, 32, float);
+INST_FATTN_WMMA_F16_CASE( 96, 32, float);
+INST_FATTN_WMMA_F16_CASE(112, 32, float);
+INST_FATTN_WMMA_F16_CASE(128, 32, float);
+
+INST_FATTN_WMMA_F16_CASE( 64,  8, half);
+INST_FATTN_WMMA_F16_CASE( 96,  8, half);
+INST_FATTN_WMMA_F16_CASE(128,  8, half);
+INST_FATTN_WMMA_F16_CASE(256,  8, half);
+
+INST_FATTN_WMMA_F16_CASE( 64, 16, half);
+INST_FATTN_WMMA_F16_CASE( 80, 16, half);
+INST_FATTN_WMMA_F16_CASE( 96, 16, half);
+INST_FATTN_WMMA_F16_CASE(112, 16, half);
+INST_FATTN_WMMA_F16_CASE(128, 16, half);
+INST_FATTN_WMMA_F16_CASE(256, 16, half);
+
+INST_FATTN_WMMA_F16_CASE( 64, 32, half);
+INST_FATTN_WMMA_F16_CASE( 80, 32, half);
+INST_FATTN_WMMA_F16_CASE( 96, 32, half);
+INST_FATTN_WMMA_F16_CASE(112, 32, half);
+INST_FATTN_WMMA_F16_CASE(128, 32, half);
+#endif // GGML_USE_MUSA
+
 static void ggml_cuda_flash_attn_ext_wmma_f16(ggml_backend_cuda_context & ctx, ggml_tensor * dst) {
     const ggml_tensor * KQV = dst;
     const ggml_tensor * Q   = dst->src[0];

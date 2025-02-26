@@ -15,7 +15,11 @@
     },
     {
       "name": "MUSA",
-      "inherits": [ "Default" ]
+      "inherits": [ "Default" ],
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
     },
     {
       "name": "CUDA",

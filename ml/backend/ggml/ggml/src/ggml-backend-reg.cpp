@@ -131,6 +131,10 @@ struct dl_handle_deleter {
 
 static void * dl_load_library(const std::wstring & path) {
     dl_handle * handle = dlopen(utf16_to_utf8(path).c_str(), RTLD_NOW | RTLD_LOCAL);
+    if (!handle) {
+        GGML_LOG_ERROR("%s: failed to load %s\n", __func__, utf16_to_utf8(path).c_str());
+        GGML_LOG_ERROR("%s: dlerror: %s\n", __func__, dlerror());
+    }
 
     return handle;
 }

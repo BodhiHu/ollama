@@ -81,6 +81,13 @@ Install prerequisites:
     - [ROCm](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/quick-start.html)
 - (Optional) NVIDIA GPU support
     - [CUDA SDK](https://developer.nvidia.com/cuda-downloads)
+- (Optional) MooreThreads GPU support
+    - [MUSA SDK](https://developer.mthreads.com/sdk/download/musa)
+    - Once you have installed the MUSA SDK, please add below to your envs:
+      ```bash
+      export CC=/usr/local/musa/bin/clang
+      export CXX=/usr/local/musa/bin/clang++
+      ```
 
 > [!IMPORTANT]
 > Ensure prerequisites are in `PATH` before running CMake.
