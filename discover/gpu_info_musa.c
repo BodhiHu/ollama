@@ -5,7 +5,7 @@
 
 void musa_init(char *musa_lib_path, musa_init_resp_t *resp) {
   LOG(resp->ch.verbose, "initializing %s\n", musa_lib_path);
-  CUresult ret;
+  MUresult ret;
   resp->err = NULL;
   resp->num_devices = 0;
   resp->musaErr = MUSA_SUCCESS;
@@ -103,15 +103,15 @@ void musa_init(char *musa_lib_path, musa_init_resp_t *resp) {
   LOG(resp->ch.verbose, "device count %d\n", resp->num_devices);
 }
 
-const int buflen = 256;
 void musa_bootstrap(musa_handle_t h, int i, mem_info_t *resp) {
   resp->err = NULL;
   musaMemory_t memInfo = {0,0};
-  CUresult ret;
-  CUdevice device = -1;
-  CUcontext ctx = NULL;
+  MUresult ret;
+  MUdevice device = -1;
+  MUcontext ctx = NULL;
+  const int buflen = 256;
   char buf[buflen + 1];
-  CUuuid uuid = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+  MUuuid uuid = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
   if (h.handle == NULL) {
     resp->err = strdup("musa driver library handle isn't initialized");
@@ -127,11 +127,11 @@ void musa_bootstrap(musa_handle_t h, int i, mem_info_t *resp) {
 
   int major = 0;
   int minor = 0;
-  ret = (*h.muDeviceGetAttribute)(&major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, device);
+  ret = (*h.muDeviceGetAttribute)(&major, MU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, device);
   if (ret != MUSA_SUCCESS) {
     LOG(h.verbose, "[%d] device major lookup failure: %d\n", i, ret);
   } else {
-    ret = (*h.muDeviceGetAttribute)(&minor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, device);
+    ret = (*h.muDeviceGetAttribute)(&minor, MU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, device);
     if (ret != MUSA_SUCCESS) {
       LOG(h.verbose, "[%d] device minor lookup failure: %d\n", i, ret);
     } else {
@@ -206,9 +206,9 @@ void musa_bootstrap(musa_handle_t h, int i, mem_info_t *resp) {
 }
 
 void musa_get_free(musa_handle_t h, int i, uint64_t *free, uint64_t *total) {
-  CUresult ret;
-  CUcontext ctx = NULL;
-  CUdevice device = -1;
+  MUresult ret;
+  MUcontext ctx = NULL;
+  MUdevice device = -1;
   *free = 0;
   *total = 0;
 
