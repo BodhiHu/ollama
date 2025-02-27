@@ -5,7 +5,6 @@ import (
 	"log/slog"
 
 	"github.com/ollama/ollama/format"
-	"github.com/ollama/ollama/runners"
 )
 
 type memInfo struct {
@@ -79,6 +78,15 @@ type CudaGPUInfo struct {
 }
 type CudaGPUInfoList []CudaGPUInfo
 
+type MusaGPUInfo struct {
+	GpuInfo
+	OSOverhead   uint64 // Memory overhead between the driver library and management library
+	index        int    //nolint:unused,nolintlint
+	computeMajor int    //nolint:unused,nolintlint
+	computeMinor int    //nolint:unused,nolintlint
+}
+type MusaGPUInfoList []MusaGPUInfo
+
 type RocmGPUInfo struct {
 	GpuInfo
 	usedFilepath string //nolint:unused,nolintlint
@@ -107,7 +115,7 @@ func (l GpuInfoList) ByLibrary() []GpuInfoList {
 	for _, info := range l {
 		found := false
 		requested := info.Library
-		if info.Variant != runners.CPUCapabilityNone.String() {
+		if info.Variant != "" {
 			requested += "_" + info.Variant
 		}
 		for i, lib := range libs {
@@ -174,6 +182,7 @@ func (l GpuInfoList) FlashAttentionSupported() bool {
 	for _, gpu := range l {
 		supportsFA := gpu.Library == "metal" ||
 			(gpu.Library == "cuda" && gpu.DriverMajor >= 7) ||
+			gpu.Library == "musa" ||
 			gpu.Library == "rocm"
 
 		if !supportsFA {
