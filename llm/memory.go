@@ -341,7 +341,6 @@ func EstimateGPULayers(gpus []discover.GpuInfo, f *ggml.GGML, projectors []strin
 	estimate.TotalSize = memoryRequiredTotal
 	estimate.TensorSplit = tensorSplit
 	estimate.GPUSizes = gpuAllocations
-	slog.Info(fmt.Sprintf(">>>>> estimate.Layers = %d", estimate.Layers))
 	return estimate
 }
 
