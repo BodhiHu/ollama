@@ -67,6 +67,12 @@ docker run -d --device /dev/kfd --device /dev/dri -v ollama:/root/.ollama -p 114
 
 ### MooreThreads GPU
 
+<!--
+TODO: MUSA:
+1. push ollama musa image to docker;
+2. avoid mounting host musa paths
+-->
+
 To run Ollama using Docker with MooreThreads GPUs, use the `musa` tag with following command:
 
 ```shell

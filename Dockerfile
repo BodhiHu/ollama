@@ -26,18 +26,18 @@ ENV CC=clang CXX=clang++
 
 FROM --platform=linux/amd64 mthreads/musa:${MUSA_VERSION_AMD64}-devel-ubuntu22.04 AS base-musa-amd64
 ENV CC=clang CXX=clang++
-# TODO: @BodhiHu: uncomment below
+# TODO: MUSA: uncomment below when official musa docker is ready
 # RUN bash /musa/install_deps.sh
 # RUN bash /musa/install_musa.sh
 WORKDIR /ollama
 COPY . .
 ENTRYPOINT [ "bash" ]
 
-# TODO: @BodhiHu: update to final docker image
+# TODO: MUSA: uncomment below when official musa docker is ready
 # FROM --platform=linux/arm64 mthreads/musa:${MUSA_VERSION_ARM64}-devel-ubuntu22.04-arm64 AS base-musa-arm64
 FROM --platform=linux/arm64 docker.io/library/musa:rc3.1.2-devel-ubuntu22.04-arm64 AS base-musa-arm64
 ENV CC=clang CXX=clang++
-# TODO: @BodhiHu: uncomment below
+# TODO: MUSA: uncomment below when official musa docker is ready
 # RUN bash /musa/install_deps.sh
 # RUN bash /musa/install_musa.sh
 WORKDIR /ollama
@@ -114,10 +114,13 @@ RUN --mount=type=cache,target=/root/.ccache \
 
 FROM base AS build
 ARG GOVERSION=1.23.4
-# TODO: @BodhiHu: remove the mirrored download link
+# TODO: MUSA: remove the mirrored download link
 # RUN curl -fsSL https://golang.org/dl/go${GOVERSION}.linux-$(case $(uname -m) in x86_64) echo amd64 ;; aarch64) echo arm64 ;; esac).tar.gz | tar xz -C /usr/local
 RUN curl -fsSL https://oss.mthreads.com/release-stable/mirrors/go1.23.4.linux-arm64.tar.gz | tar xz -C /usr/local
 ENV PATH=/usr/local/go/bin:$PATH
+# TODO: MUSA: remove mirrors
+RUN go env -w GO111MODULE=on
+RUN go env -w  GOPROXY=https://goproxy.cn,direct
 WORKDIR /go/src/github.com/ollama/ollama
 COPY . .
 ARG GOFLAGS="'-ldflags=-w -s'"
@@ -138,9 +141,9 @@ COPY --from=jetpack-6 dist/lib/ollama/cuda_v12 lib/ollama/cuda_jetpack6
 FROM --platform=linux/${TARGETARCH} scratch AS musa
 COPY --from=musa-3 \
     /ollama/dist/lib/ollama/musa_v3/libggml-musa.so \
-    /usr/local/musa/lib/libmusa.so \
-    /usr/local/musa/lib/libmublas.so \
-    /usr/local/musa/lib/libmusart.so \
+    /usr/local/musa/lib/libmusa.so*                 \
+    /usr/local/musa/lib/libmusart.so*               \
+    /usr/local/musa/lib/libmublas.so*               \
     /lib/ollama/musa_v3/
 
 FROM --platform=linux/arm64 scratch AS rocm
@@ -159,10 +162,12 @@ RUN ln -s /lib/$(uname -m)-linux-gnu/libomp.so.5 /lib/$(uname -m)-linux-gnu/libo
 COPY --from=archive /bin /usr/bin
 ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 COPY --from=archive /lib/ollama /usr/lib/ollama
-ENV LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/aarch64-linux-gnu/musa
+ENV LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/ollama
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/ollama/musa_v3:/usr/lib/aarch64-linux-gnu/musa
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV MTHREADS_VISIBLE_DEVICES=all
+ENV MUSA_VISIBLE_DEVICES=all
 ENV OLLAMA_HOST=0.0.0.0:11434
 EXPOSE 11434
 ENTRYPOINT ["/bin/ollama"]
