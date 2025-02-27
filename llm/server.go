@@ -116,6 +116,11 @@ func NewLlamaServer(gpus discover.GpuInfoList, model string, f *ggml.GGML, adapt
 		}
 	}
 
+	// TODO: MUSA: support fully loading to VRAM on ARM64
+	if gpus[0].Library == "musa" && runtime.GOARCH == "arm64" && opts.NumGPU > int(f.KV().BlockCount()) {
+		opts.NumGPU = int(f.KV().BlockCount())
+	}
+
 	// On linux and windows, over-allocating CPU memory will almost always result in an error
 	// Darwin has fully dynamic swap so has no direct concept of free swap space
 	if runtime.GOOS != "darwin" {

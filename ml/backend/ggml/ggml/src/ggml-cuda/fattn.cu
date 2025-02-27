@@ -9,10 +9,10 @@
 
 #include <cstdint>
 
-// FIXME: ggml_cuda_flash_attn_ext_wmma_f16_case c++ templates symbols are somehow undefined
-// in the built libggml-musa.so, for now we move the template instantiations to fattn.cu to
-// resolve this. This had changed in the upstream llama.cpp, we can remove this `GGML_USE_MUSA`
-// check once ollama synced with upstream.
+// TODO: MUSA: ggml_cuda_flash_attn_ext_wmma_f16_case c++ templates symbols are somehow
+// undefined in the built libggml-musa.so, for now we move the template instantiations to
+// fattn.cu to resolve this. This had changed in the upstream llama.cpp, we can remove
+// this `GGML_USE_MUSA` check once ollama synced with upstream.
 #ifdef GGML_USE_MUSA
 #define INST_FATTN_WMMA_F16_CASE(D, cols_per_block, KQ_acc_t)                         \
     template void ggml_cuda_flash_attn_ext_wmma_f16_case                              \

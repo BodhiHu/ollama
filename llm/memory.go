@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -264,6 +265,11 @@ func EstimateGPULayers(gpus []discover.GpuInfo, f *ggml.GGML, projectors []strin
 		}
 	}
 
+	// TODO: MUSA: support fully loading to VRAM on ARM64
+	if gpus[0].Library == "musa" && runtime.GOARCH == "arm64" && layerCount > int(f.KV().BlockCount()) {
+		layerCount = int(f.KV().BlockCount())
+	}
+
 	// Add the applicable (full or partial) graph allocations
 	for i := range gpus {
 		if layerCounts[i] <= 0 {
@@ -335,6 +341,7 @@ func EstimateGPULayers(gpus []discover.GpuInfo, f *ggml.GGML, projectors []strin
 	estimate.TotalSize = memoryRequiredTotal
 	estimate.TensorSplit = tensorSplit
 	estimate.GPUSizes = gpuAllocations
+	slog.Info(fmt.Sprintf(">>>>> estimate.Layers = %d", estimate.Layers))
 	return estimate
 }
 
